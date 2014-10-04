@@ -1,0 +1,11 @@
+[general]
+sequence = ./neurospora_crassa_or74a_12_supercontigs.fasta
+
+[blast]
+dbname = ./blastdb/neurospora
+
+[genblasta]
+oldblastbin = /home/pschuprikov/soft/blast-2.2.26/bin
+
+[exonerate]
+
