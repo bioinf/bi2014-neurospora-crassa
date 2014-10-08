@@ -11,5 +11,5 @@ parser.add_argument(metavar='sequence', dest='sequence', help='Fasta sequence fi
 
 args = parser.parse_args()
 os.mkdir(args.name)
-shutil.copyfile(args.sequence, args.name + '/' + args.name + '.fasta')
+shutil.copyfile(args.sequence, os.path.join(args.name, 'sequence.fasta'))
 subprocess.call(['makeblastdb', '-in', args.sequence, '-dbtype', 'nucl', '-out', args.name + "/" + args.name])
