@@ -1,15 +1,17 @@
+#!/usr/bin/env python
+
+import tempfile
 import argparse
+import io
 import os
 import subprocess
 import configparser
-import sys
+from Bio.Blast import NCBIXML
 
 if not os.path.exists('sweet.ini'):
     initial_cfg = configparser.ConfigParser()
-    initial_cfg['general'] = { }
-    initial_cfg['blast'] = {'dbname' : './blastdb/neurospora'}
+    initial_cfg['general'] = {}
     initial_cfg['genblasta'] = {}
-    initial_cfg['exonerate'] = {}
     with open('sweet.ini', 'w') as configfile:
         initial_cfg.write(configfile)
 
@@ -17,91 +19,101 @@ cfg = configparser.ConfigParser()
 cfg.read('sweet.ini')
 
 general_cfg = cfg['general']
-blast_cfg = cfg['blast']
 genblasta_cfg = cfg['genblasta']
-exonerate_cfg = cfg['exonerate']
 
-def do_initblastdb(args):
-    if not os.path.exists(os.path.dirname(args.dbname)):
-        os.mkdir(os.path.dirname(args.dbname))
-    print("Initializing BLAST database...")
 
-    subprocess.call(['makeblastdb', '-in', args.seq, '-dbtype', 'nucl', '-out', args.dbname])
+def dbname2path(dbname):
+    return dbname + '/' + dbname + '.fasta'
 
-    print("Initialization BLAST database... finished.")
 
-def do_search_genblasta(args):
-    if genblasta_cfg.get('oldblastbin') is None:
-        sys.exit("'oldblastbin' option for genblasta should be set in sweet.ini .")
-    if args.seq is None:
-         sys.exit('ERROR: Sequence argument is missing.')
 
-    old_blast_env = os.environ.copy()
-    old_blast_env["PATH"] = genblasta_cfg['oldblastbin'] + ":" + old_blast_env["PATH"]
+class Blast:
+    def __init__(self):
+        self.toolname = 'blast'
 
-    print("Running genblasta...")
+    @staticmethod
+    def getraw(dbname, proteinsfile, output):
+        subprocess.call(['tblastn', '-db', dbname + '/' + dbname, '-query', proteinsfile], stdout=output)
 
-    subprocess.call(['genblasta', '-q', args.prot, '-t', args.seq, '-o', 'genblasta.out'], env=old_blast_env)
+    @staticmethod
+    def getbasicdata(dbname, proteinsfile):
+        with tempfile.TemporaryFile(mode='r+') as tmpfile:
+            subprocess.call(['tblastn', '-db', dbname + '/' + dbname, '-query', proteinsfile], stdout=tmpfile)
+            for record in NCBIXML.parse(tmpfile):
 
-    print("Writing to genblasta.out...")
 
-def do_search_blast(args):
-    if args.dbname is None:
-        sys.exit('ERROR: Blast DB name argument is missing.')
 
-    print("Running blast...")
 
-    subprocess.call(['tblastn', '-query', args.prot, '-db', args.dbname, '-out', 'blast.out'])
 
-    print("Writing to blast.out...")
 
-def do_search_exonerate(args):
-    if args.seq is None:
-        sys.exit('ERROR: Sequence argument is missing.')
+class Exonerate:
+    def __init__(self):
+        self.toolname = 'exonerate'
 
-    print("Running exonerate...")
+    @staticmethod
+    def getraw(dbname, proteinsfile, output):
+        subprocess.call(['exonerate', '--model', 'protein2genome', '--query',
+                         proteinsfile, '--target', dbname2path(dbname)], stdout=output)
 
-    with open('exonerate.out', 'w') as outfile:
-        subprocess.call(['exonerate', '--model', 'protein2genome', args.prot, args.seq], stdout=outfile)
+    @staticmethod
+    def getbasicdata(dbname, proteinsfile):
+        with tempfile.TemporaryFile(mode='r+') as tmpfile:
+            subprocess.call(['exonerate', '--model', 'protein2genome', '--showquerygff', '--query',
+                             proteinsfile, '--target', dbname2path(dbname)], stdout=tmpfile)
+            tmpfile.seek(0)
+            return tmpfile.read()
 
-    print("Writing to exonerate.out..")
 
-def do_search(args):
-    print("Searching proteins...")
-    if args.method == 'genblasta':
-        do_search_genblasta(args)
-    if args.method == 'blast':
-        do_search_blast(args)
-    if args.method == 'exonerate':
-        do_search_exonerate(args)
-    print("Searching proteins... finished")
+class Genewise:
+    def __init__(self):
+        self.toolname = 'genewise'
 
-parser = argparse.ArgumentParser(description="BI sweet annotation.")
-subparsers = parser.add_subparsers(metavar='action', dest='action', help='What should I do? (initblastdb, search)')
+    @staticmethod
+    def getraw(dbname, proteinsfile, output):
+        subprocess.call(['genewise', proteinsfile, dbname2path(dbname)], stdout=output)
 
-def add_sequence_arg(parser, required = False):
-    parser.add_argument('-s', '--sequence', metavar='sequence', dest='seq', default=general_cfg.get('sequence'),
-                        required = general_cfg.get('sequence') is None if required else False,
-                        help='Path to sequence in fasta format (required for genblasta and exonerate)')
 
-def add_dbname_arg(parser, required = False):
-    parser.add_argument('-d', '--dbname', metavar='dbname', dest='dbname', default=blast_cfg.get('dbname'),
-                        required = blast_cfg.get('dbname') is None if required else False,
-                        help='Database path (required for blast)')
+class Genblasta:
+    def __init__(self):
+        self.toolname = 'genblasta'
 
-parser_init = subparsers.add_parser('initblastdb')
-add_sequence_arg(parser_init, True)
-add_dbname_arg(parser_init, True)
+    @staticmethod
+    def _prepareenv():
+        newenv = os.environ.clone()
+        newenv['PATH'] = genblasta_cfg['genblasta']['oldblastbin'] + ':' + newenv['PATH']
+        return newenv
 
-parser_search = subparsers.add_parser('search')
-parser_search.add_argument('method', choices=['genblasta', 'blast', 'exonerate'])
-parser_search.add_argument('-p', '--proteins', metavar='proteins', dest='prot', required=general_cfg.get('proteins') is None,
-                            default=general_cfg.get('proteins'), help='Path to proteins in fasta format')
-add_sequence_arg(parser_search)
-add_dbname_arg(parser_search)
+    @staticmethod
+    def getraw(dbname, proteinsfile, output):
+        subprocess.call(['genblasta', '-q', proteinsfile, '-t', dbname2path(dbname)], stdout=output,
+                        env=Genblasta._prepareenv())
+
+
+
+def runraw(args):
+    print('running ' + args.toolname + ' with raw output...')
+    with open(args.toolname + '.out', 'w') as output:
+        tools[args.toolname].getraw(args.dbname, args.proteins, output)
+    print(args.toolname + '.out was written')
+
+
+def runbasicdata(args):
+    print('running ' + args.toolname + ' with basic data...')
+    print(tools[args.toolname].getbasicdata(args.dbname, args.proteins))
+
+tools = dict()
+for x in [Blast(), Genewise(), Genblasta(), Exonerate()]:
+    tools[x.toolname] = x
+
+parser = argparse.ArgumentParser(description="Sweet bioinformatics tool.")
+parser.add_argument('operation', choices=['raw', 'basicdata'], help='Run mode')
+parser.add_argument('toolname', choices=tools.keys(), help='Name of a tool to be used')
+parser.add_argument('proteins', help='Input proteins file name')
+parser.add_argument('dbname', help='Sequence database name (created with initialize.py)')
 
 args = parser.parse_args()
-if args.action == 'initblastdb':
-    do_initblastdb(args)
-if args.action == 'search':
-    do_search(args)
+
+if args.operation == 'raw':
+    runraw(args)
+elif args.operation == 'basicdata':
+    runbasicdata(args)
