@@ -35,9 +35,8 @@ class Exonerate:
     @staticmethod
     def writeparseable(dbpath, proteinspath, outpath):
         with open(outpath, 'w') as outfile:
-            subprocess.call(['exonerate', '--model', 'protein2genome', '--showvulgar', 'no',
-                             '--showalignment', 'no', '--showquerygff', 'yes', '--query',
-                             proteinspath, '--target', dbpath2seq(dbpath)], stdout=outfile)
+            subprocess.call(['exonerate', '--model', 'protein2genome', '--query', proteinspath,
+                             '--showalignment', 'no', '--target', dbpath2seq(dbpath)], stdout=outfile)
 
 
 class Genewise:
@@ -84,8 +83,8 @@ def runraw(args):
 
 
 def runparseable(args):
-    filename = ('' if args.runname is None else os.path.basename(args.runname) + '.') + args.toolname + '.parsable.out'
-    print('running ' + args.toolname + ' (parsable output)...')
+    filename = ('' if args.runname is None else os.path.basename(args.runname) + '.') + args.toolname + '.parseable.out'
+    print('running ' + args.toolname + ' (parseable output)...')
     tools[args.toolname].writeparseable(args.dbname, args.proteins, filename)
     print(filename + ' was written')
 
