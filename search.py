@@ -2,9 +2,12 @@
 
 import argparse
 import os
+from os import path
 import shutil
 import subprocess
 import sweetconfig
+import tempfile
+import genblastA_to_gff3
 
 def dbpath2seq(dbpath):
     return os.path.join(dbpath, 'sequence.fasta')
@@ -15,11 +18,11 @@ class Blast:
 
     @staticmethod
     def writeraw(dbpath, proteinspath, outpath):
-        subprocess.call(['tblastn', '-db', os.path.join(dbpath, os.path.basename(dbpath)), '-query', proteinspath, '-out', outpath])
+        subprocess.check_call(['tblastn', '-db', path.join(dbpath, path.basename(dbpath)), '-query', proteinspath, '-out', outpath])
 
     @staticmethod
     def writeparseable(dbpath, proteinspath, outpath):
-        subprocess.call(['tblastn', '-db', os.path.join(dbpath, os.path.basename(dbpath)), '-query', proteinspath, '-outfmt', '5', '-out', outpath])
+        subprocess.check_call(['tblastn', '-db', path.join(dbpath, path.basename(dbpath)), '-query', proteinspath, '-outfmt', '5', '-out', outpath])
 
 
 class Exonerate:
@@ -29,13 +32,13 @@ class Exonerate:
     @staticmethod
     def writeraw(dbpath, proteinspath, outpath):
         with open(outpath, 'w') as outfile:
-            subprocess.call(['exonerate', '--model', 'protein2genome', '--query',
+            subprocess.check_call(['exonerate', '--model', 'protein2genome', '--query',
                              proteinspath, '--target', dbpath2seq(dbpath)], stdout=outfile)
 
     @staticmethod
     def writeparseable(dbpath, proteinspath, outpath):
         with open(outpath, 'w') as outfile:
-            subprocess.call(['exonerate', '--model', 'protein2genome', '--query', proteinspath,
+            subprocess.check_call(['exonerate', '--model', 'protein2genome', '--query', proteinspath,
                              '--showalignment', 'no', '--target', dbpath2seq(dbpath)], stdout=outfile)
 
 
@@ -46,7 +49,7 @@ class Genewise:
     @staticmethod
     def writeraw(dbpath, proteinspath, outpath):
         with open(outpath, 'w') as outfile:
-            subprocess.call(['genewise', proteinspath, dbpath2seq(dbpath)], stdout=outfile)
+            subprocess.check_call(['genewise', proteinspath, dbpath2seq(dbpath)], stdout=outfile)
 
 
 class Genblasta:
@@ -60,19 +63,28 @@ class Genblasta:
         return newenv
 
     @staticmethod
-    def writeraw(dbpath, proteinspath, outpath):
-        seqpath_abs = os.path.abspath(dbpath2seq(dbpath))
-        outpath_abs = os.path.abspath(outpath)
+    def _prepare_aux_dir(proteinspath, outpath):
+        outpath_abs = path.abspath(outpath)
 
-        auxdirpath = os.path.join(os.path.dirname(outpath_abs), '.aux.' + os.path.basename(outpath_abs))
-        if not os.path.exists(auxdirpath):
+        auxdirpath = path.join(path.dirname(outpath_abs), '.aux.' + path.basename(outpath_abs))
+        if not path.exists(auxdirpath):
             os.mkdir(auxdirpath)
 
-        proteinspath_aux = os.path.abspath(os.path.join(auxdirpath, 'query.fasta'))
+        proteinspath_aux = path.abspath(path.join(auxdirpath, 'query.fasta'))
         shutil.copyfile(proteinspath, proteinspath_aux)
 
-        subprocess.call(['genblasta', '-q', proteinspath_aux, '-t', seqpath_abs, '-o', outpath_abs],
-                        cwd = auxdirpath, env=Genblasta._prepareenv())
+        return auxdirpath, proteinspath_aux
+
+
+    @staticmethod
+    def writeraw(dbpath, proteinspath, outpath):
+        auxdir, proeins_aux = Genblasta._prepare_aux_dir(proteinspath, outpath)
+        subprocess.check_call(['genblasta', '-q', os.path.abspath(proeins_aux), '-t', os.path.abspath(dbpath2seq(dbpath))
+                               , '-o', os.path.abspath(outpath)], cwd=auxdir, env=Genblasta._prepareenv())
+
+    @staticmethod
+    def writeparseable(dbpath, proteinspath, outpath):
+        Genblasta.writeraw(dbpath, proteinspath, outpath)
 
 
 def runraw(args):
@@ -88,21 +100,21 @@ def runparseable(args):
     tools[args.toolname].writeparseable(args.dbname, args.proteins, filename)
     print(filename + ' was written')
 
+if __name__ == '__main__':
+    tools = dict()
+    for x in [Blast(), Genewise(), Genblasta(), Exonerate()]:
+        tools[x.toolname] = x
 
-tools = dict()
-for x in [Blast(), Genewise(), Genblasta(), Exonerate()]:
-    tools[x.toolname] = x
+    parser = argparse.ArgumentParser(description="Sweet bioinformatics tool.")
+    parser.add_argument('operation', choices=['raw', 'parseable'], help='Run mode')
+    parser.add_argument('toolname', choices=tools.keys(), help='Name of a tool to be used')
+    parser.add_argument('proteins', help='Input proteins file name')
+    parser.add_argument('dbname', help='Sequence database name (created with initialize.py)')
+    parser.add_argument('--runname', dest='runname', help='Run name (saving output to runname.%someextension%)')
 
-parser = argparse.ArgumentParser(description="Sweet bioinformatics tool.")
-parser.add_argument('operation', choices=['raw', 'parseable'], help='Run mode')
-parser.add_argument('toolname', choices=tools.keys(), help='Name of a tool to be used')
-parser.add_argument('proteins', help='Input proteins file name')
-parser.add_argument('dbname', help='Sequence database name (created with initialize.py)')
-parser.add_argument('--runname', dest='runname', help='Run name (saving output to runname.%someextension%)')
+    args = parser.parse_args()
 
-args = parser.parse_args()
-
-if args.operation == 'raw':
-    runraw(args)
-elif args.operation == 'parseable':
-    runparseable(args)
+    if args.operation == 'raw':
+        runraw(args)
+    elif args.operation == 'parseable':
+        runparseable(args)
