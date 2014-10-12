@@ -28,7 +28,7 @@ for query in qresult:
 				hit_id = hit.id
 				hit_range = hsp.hit_range
 	record = SeqRecord(
-		Seq(genome[hit_range[0]:hit_range[1]]),
+		Seq(genome[hit_range[0]:hit_range[1]+1]),
 		id=query.id + "" + hit_id,
 		description = str(minimum_score) + " " + str(hit_range) + " " + str(exons)
 	)

@@ -23,12 +23,14 @@ alignments = SeqIO.parse(args.input, "fasta")
 output = open(args.output, 'w')
 
 for alignment in alignments:
-	ranges = [int(x) for x in re.findall("\d+", re.findall(r'\[.*\]', alignment.description)[0])]
+	ranges = [int(x) for x in re.findall("\d+", re.findall(r'\(.*\)', alignment.description)[0])]
+	total_range = (ranges[0], ranges[1])
+	ranges = ranges[2:]
 	ranges.sort()
 	seq = alignment.seq
 	exon_union = ""
 	for i in range(len(ranges) // 2):
-		exon_union += str(seq[ranges[2*i]:ranges[2*i+1] + 1])
+		exon_union += str(seq[ranges[2*i]-total_range[0]:ranges[2*i+1] + 1-total_range[0]])
 	print()
 
 	if len(exon_union) < 7 or len(exon_union) % 3 != 0:
