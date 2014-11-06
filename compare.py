@@ -16,7 +16,7 @@ AlignmentData = namedtuple('AlignmentData', ['runid', 'score', 'matched', 'cover
 
 def parse_n_fill_run_data_searchio(run_path, run_data, querydb):
     run_id = get_run_id(run_path)
-    run_format = {'blast': 'blast-xml', 'exonerate': 'exonerate-vulgar'}[get_tool_id(run_path)]
+    run_format = get_run_format(run_path)
     for query in SearchIO.parse(run_path, run_format):
         for hit in query.hits:
             for hsp in hit.hsps:

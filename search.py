@@ -31,15 +31,15 @@ class Exonerate:
     @staticmethod
     def writeraw(dbpath, proteinspath, outpath):
         with open(outpath, 'w') as outfile:
-            subprocess.check_call(['exonerate', '--model', 'protein2genome', '--query',
-                             proteinspath, '--target', dbpath2seq(dbpath)], stdout=outfile)
+            subprocess.check_call(
+                    ['exonerate', '--model', 'protein2genome', '--query',
+                    proteinspath, '--softmasktarget', 'yes', 
+                    '--target', dbpath2seq(dbpath),
+                    '--ryo', '<< %pi >>\n'], stdout=outfile)
 
     @staticmethod
     def writeparseable(dbpath, proteinspath, outpath):
-        with open(outpath, 'w') as outfile:
-            subprocess.check_call(['exonerate', '--model', 'protein2genome', '--query', proteinspath, 
-                             '--showalignment', 'no', '--target', dbpath2seq(dbpath)], stdout=outfile)
-
+        Exonerate.writeraw(dbpath, proteinspath, outpath)
 
 class Genewise:
     def __init__(self):
@@ -47,9 +47,7 @@ class Genewise:
 
     @staticmethod
     def writeraw(dbpath, proteinspath, outpath):
-        with open(outpath, 'w') as outfile:
-            subprocess.check_call(['genewise', proteinspath, dbpath2seq(dbpath)], stdout=outfile)
-
+        pass
 
 class Genblasta:
     def __init__(self):
