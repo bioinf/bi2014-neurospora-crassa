@@ -8,18 +8,11 @@ import genblastA_to_gff3
 from collections import namedtuple, defaultdict
 from Bio import SearchIO
 from Bio import SeqIO
+import sweet_utils
 
 AlignmentData = namedtuple('AlignmentData', ['runid', 'score', 'matched', 'coverage', 'range', 'exons'])
 
 
-def get_run_id(run_path):
-    return os.path.basename(run_path)[:-len('.parseable.out')]
-
-
-def get_tool_id(run_path):
-    return get_run_id(run_path).split('.')[-1]
-
-searchio_formats = {'blast': 'blast-xml', 'exonerate': 'exonerate-vulgar'}
 
 def parse_n_fill_run_data_searchio(run_path, run_data, querydb):
     run_id = get_run_id(run_path)

@@ -8,9 +8,8 @@ import subprocess
 import sweetconfig
 import tempfile
 import genblastA_to_gff3
+from sweet_utils import dbpath2seq
 
-def dbpath2seq(dbpath):
-    return os.path.join(dbpath, 'sequence.fasta')
 
 class Blast:
     def __init__(self):
@@ -38,7 +37,7 @@ class Exonerate:
     @staticmethod
     def writeparseable(dbpath, proteinspath, outpath):
         with open(outpath, 'w') as outfile:
-            subprocess.check_call(['exonerate', '--model', 'protein2genome', '--query', proteinspath,
+            subprocess.check_call(['exonerate', '--model', 'protein2genome', '--query', proteinspath, 
                              '--showalignment', 'no', '--target', dbpath2seq(dbpath)], stdout=outfile)
 
 
