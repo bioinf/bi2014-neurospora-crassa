@@ -7,12 +7,15 @@ from Bio import SeqIO
 import re
 from Bio import SearchIO
 from Bio import pairwise2
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from Bio.SubsMat import MatrixInfo as matlist
+from Bio.SeqFeature import SeqFeature, FeatureLocation
 from sweet_utils import dbpath2seq
+from BCBio import GFF
 
 Exon = namedtuple('Exon', ['query_start','query_end', 'hit_start', 'hit_end'])
 ExonerateInfo = namedtuple('ExonerateInfo', ['percentage'])
+BIAS = 10
 
 def printhsp(dna, exons):
     print(exons)
@@ -55,13 +58,16 @@ def retrieve_peptide(dna, exons):
         result.pop()
     return "".join(result)
 
+def check_equal_near(dna, pos, value): 
+    for i in range(max(pos - BIAS, 0), min(len(dna) - 3, pos + BIAS)):
+        if dna[i:i+3].translate()[0] == value:
+            return True
+    return False
 
 def check_hsp(dna, exons):
-    first_exon, last_exon, = exons[0], exons[-1]
-    has_start_codon = (dna[first_exon.hit_start:first_exon.hit_end+3]
-            .transcribe().translate()[0] == 'M')
-    has_stop_codon = (dna[last_exon.hit_end - 3:last_exon.hit_end]
-            .transcribe().translate()[0] == '*')
+    first_exon, last_exon = exons[0], exons[-1]
+    has_start_codon = check_equal_near(dna, first_exon.hit_start, 'M')
+    has_stop_codon = check_equal_near(dna, last_exon.hit_end - 3, '*')
     if has_start_codon and has_stop_codon:
         return True
     else:
@@ -78,7 +84,6 @@ args = parser.parse_args()
 genome = SeqIO.to_dict(SeqIO.parse(dbpath2seq(args.dbname), 'fasta'))
 queries = SeqIO.to_dict(SeqIO.parse(args.proteins, 'fasta'))
 
-good_entries = []
 tool_id = sweet_utils.get_tool_id(args.found)
 
 def exonerate_infos(filepath):
@@ -92,10 +97,12 @@ def exonerate_infos(filepath):
 if tool_id == 'exonerate':
     exonerate_it = iter(exonerate_infos(args.found))
 
+cool_features = defaultdict(list)
+gene_id = 1
+
 with open(args.found, 'r') as foundfile:
     for found in SearchIO.parse(foundfile, sweet_utils.get_run_format(args.found)):
         query = queries[found.id]
-        good_found = SearchIO.QueryResult(id=found.id)
         for hit in found:
             if tool_id == 'exonerate':
                 for hsp in hit.hsps:
@@ -105,18 +112,25 @@ with open(args.found, 'r') as foundfile:
                 hit.sort(key=lambda hsp: hsp.ident_num,  reverse=True)
             elif tool_id == 'exonerate':
                 hit.sort(key=lambda hsp: hsp.ident_pct, reverse=True)
-
             best_hsp = hit.hsps[0]
     
-            hit_dna = genome[hit.id].seq[best_hsp.hit_start:best_hsp.hit_end]
+            start_idx = max(0, best_hsp.hit_start - BIAS)
+            end_idx = min(len(genome[hit.id]), best_hsp.hit_end + BIAS)
+            hit_dna = genome[hit.id].seq[start_idx:end_idx]
+
             if best_hsp[0].hit_strand == -1:
                 hit_dna = hit_dna.reverse_complement()
+                shift = best_hsp.hit_start - start_idx
+            else:
+                shift = end_idx - best_hsp.hit_end
 
             if tool_id == 'blast':
-                exons = getexons(best_hsp[0].aln, 0, best_hsp.query_start)
+                exons = getexons(best_hsp[0].aln, shift, best_hsp.query_start)
+                score = best_hsp.bitscore
                 percentage = best_hsp.ident_num * 100 / len(query)
             elif tool_id == 'exonerate':
                 exons = []
+                score = best_hsp.score
                 for fragment in best_hsp:
                     start_idx = best_hsp.hit_start
                     hit_start = fragment.hit_start - best_hsp.hit_start
@@ -128,14 +142,19 @@ with open(args.found, 'r') as foundfile:
                     exons.append(Exon(
                         fragment.query_start, fragment.query_end,
                         hit_start, hit_end))
-                percentage = 100
                 percentage = best_hsp.ident_pct
     
             if check_hsp(hit_dna, exons) and percentage > args.percentage:
-                good_hit = SearchIO.Hit(id=hit.id)
-                good_hit.append(best_hsp)
-                good_found.append(good_hit)
-            
-        if len(good_found) != 0:
-            good_entries.append(good_found)
-print(good_entries)
+                cool_features[hit.id].append(SeqFeature(
+                    FeatureLocation(best_hsp.hit_start+1, best_hsp.hit_end),
+                    type='gene', strand = best_hsp[0].hit_strand, 
+                    qualifiers = { "source" : "tblastn", 
+                                   "score" : percentage,
+                                   "ID" : "gene{}".format(gene_id)}))
+                gene_id += 1
+seqs = []
+for k, v in cool_features.items(): 
+    genome[k].features = cool_features[k]
+    seqs.append(genome[k])
+
+GFF.write(seqs, sys.stdout)
