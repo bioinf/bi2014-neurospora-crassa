@@ -15,7 +15,7 @@ from BCBio import GFF
 
 Exon = namedtuple('Exon', ['query_start','query_end', 'hit_start', 'hit_end'])
 ExonerateInfo = namedtuple('ExonerateInfo', ['percentage'])
-BIAS = 10
+BIAS = 0
 
 def printhsp(dna, exons):
     print(exons)
@@ -59,7 +59,7 @@ def retrieve_peptide(dna, exons):
     return "".join(result)
 
 def check_equal_near(dna, pos, value): 
-    for i in range(max(pos - BIAS, 0), min(len(dna) - 3, pos + BIAS)):
+    for i in range(max(pos - BIAS, 0), min(len(dna) - 3, pos + BIAS) + 1):
         if dna[i:i+3].translate()[0] == value:
             return True
     return False
@@ -132,9 +132,8 @@ with open(args.found, 'r') as foundfile:
                 exons = []
                 score = best_hsp.score
                 for fragment in best_hsp:
-                    start_idx = best_hsp.hit_start
-                    hit_start = fragment.hit_start - best_hsp.hit_start
-                    hit_end = fragment.hit_end - best_hsp.hit_start
+                    hit_start = fragment.hit_start - best_hsp.hit_start + shift
+                    hit_end = fragment.hit_end - best_hsp.hit_start + shift
                     if fragment.hit_strand == -1:
                         hit_start, hit_end = hit_end - 1, hit_start
                         hit_start = len(hit_dna) - 1 - hit_start
