@@ -1,7 +1,7 @@
 #!cafe
 #version
 #date
-load -i table.txt
-tree ((Neurospora_crassa:2,Neurospora_tetrasperma:4):3,Shizosaccharomyces_pombe:1) 
+load -i table0.txt
+tree ((nc:1,nt:1):2,sp:4) 
 lambda -s
 report result
