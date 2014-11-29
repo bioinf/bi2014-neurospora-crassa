@@ -14,15 +14,15 @@
 ~~~bash
 $ printenv
 ...
-PATH=/usr/local/bin:/usr/bin:/bin:...
+PATH=/usr/local/bin:/usr/bin:/bin:... 
 ...
 ~~~
 
-Значение конкретной переменной можно узнать, передав в качестве параметра `printenv` имя
+ЗНАЧЕНИЕ конкретной переменной можно узнать, передав в качестве параметра `printenv` имя
 этой переменной:
 
 ~~~bash
-$ printenv
+$ printenv ⚓
 $ printenv WISECONFIGDIR
 /home/me/soft/wise/wisecfg
 ~~~

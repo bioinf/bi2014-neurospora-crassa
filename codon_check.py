@@ -23,16 +23,13 @@ alignments = SeqIO.parse(args.input, "fasta")
 output = open(args.output, 'w')
 
 for alignment in alignments:
-	ranges = [int(x) for x in re.findall("\d+", re.findall(r'\(.*\)', alignment.description)[0])]
-	total_range = (ranges[0], ranges[1])
-	ranges = ranges[2:]
+	ranges = [int(x) for x in re.findall("\d+", re.findall(r'\[.*\]', alignment.description)[0])]
 	ranges.sort()
 	seq = alignment.seq
 	exon_union = ""
 	for i in range(len(ranges) // 2):
-		exon_union += str(seq[ranges[2*i]-total_range[0]:ranges[2*i+1] + 1-total_range[0]])
-	print()
-
+		exon_union += str(seq[ranges[2*i]:ranges[2*i+1]])
+	
 	if len(exon_union) < 7 or len(exon_union) % 3 != 0:
 		continue
 	
@@ -42,13 +39,18 @@ for alignment in alignments:
 	good = True
 	gen = ""
 	for i in range(1, len(exon_union) // 3 - 1):
+		if exon_union[3*i:3*i+3] not in all_codons:
+			good = False
+			break
 		codon = all_codons[exon_union[3*i:3*i+3]]
 		if codon == 'X':
 			good = False
 			break
 		gen += codon
 
-	if not good and codons[exon_union[-3:]] != 'X':
+	print()
+
+	if not good or all_codons[exon_union[-3:]] != 'X':
 		continue
 
 	record = SeqRecord(
