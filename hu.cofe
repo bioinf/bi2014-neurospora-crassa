@@ -1,0 +1,7 @@
+#!cafe
+#version
+#date
+load -i table0.txt
+tree ((nc:1,nt:1):2,sp:4) 
+lambda -s
+report result

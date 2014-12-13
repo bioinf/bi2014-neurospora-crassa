@@ -1,0 +1,10 @@
+Description	ID	nc	nt	sp
+ Neurospora crassa OR74A hypothetical protein (10740 aa)	1	4	0	0
+ Neurospora crassa OR74A hypothetical protein (8114 aa)	5	1	0	0
+estExt_fgenesh1_pg.C_812010	6	0	1	0
+estExt_Genemark.C_60026	7	1	1	0
+ Neurospora crassa OR74A midasin (4994 aa)	9	1	1	0
+"ferrichrome synthetase Sib1"	11	0	0	1
+"midasin (predicted)"	12	0	0	1
+estExt_fgenesh1_pg.C_812011	13	0	1	0
+ Neurospora crassa OR74A ropy-1 (4368 aa)	14	2	1	0
