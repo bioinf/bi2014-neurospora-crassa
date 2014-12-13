@@ -1,0 +1,14 @@
+Tree:(((nc:1,nt:1):2,sp:4):6,luca:8)
+Lambda:	0.119561
+# IDs of nodes:(((nc<0>,nt<2>)<1>,sp<4>)<3>,luca<6>)<5>
+# Output format for: ' Average Expansion', 'Expansions', 'No Change', 'Contractions', and 'Branch-specific P-values' = (node ID, node ID): (0,2) (1,4) (3,6) 
+# Output format for 'Branch cutting P-values' and 'Likelihood Ratio Test': (0, 1, 2, 3, 4, 5, 6)
+Average Expansion:	(-0.250000,-0.250000)	(-0.250000,-0.500000)	(0.000000,-1.000000)
+Expansion :	(0,0)	(0,0)	(0,0)
+Remain :	(3,3)	(3,2)	(4,0)
+Decrease:	(1,1)	(1,2)	(0,4)
+'ID'	'Newick'	'Family-wide P-value'	'Viterbi P-values'
+1	(((nc_1:1,nt_0:1)_1:2,sp_0:4)_1:6,luca_0:8)_1	0.319500	((-,-),(-,-),(-,-))	
+2	(((nc_0:1,nt_0:1)_0:2,sp_1:4)_1:6,luca_0:8)_1	0.530500	((-,-),(-,-),(-,-))	
+3	(((nc_1:1,nt_1:1)_1:2,sp_1:4)_1:6,luca_0:8)_1	0.620500	((-,-),(-,-),(-,-))	
+4	(((nc_0:1,nt_1:1)_1:2,sp_0:4)_1:6,luca_0:8)_1	0.319500	((-,-),(-,-),(-,-))	
